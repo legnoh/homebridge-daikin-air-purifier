@@ -1,6 +1,6 @@
 {
   "name": "homebridge-daikin-air-purifier",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Homebridge Daikin Air Purifier plugin https://github.com/nfarina/homebridge",
   "license": "MIT",
   "main": "dist/index.js",
@@ -27,8 +27,7 @@
     "typescript": "^2.5.3"
   },
   "dependencies": {
-    "daikin-air-purifier": "github:legnoh/daikin-air-purifier",
-    "hap-nodejs": "bhagyas/hap-nodejs"
+    "daikin-air-purifier": "github:legnoh/daikin-air-purifier"
   },
   "scripts": {
     "build": "rm -rf ./lib/* && tsc",
