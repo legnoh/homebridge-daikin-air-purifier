@@ -38,6 +38,8 @@ class DAP {
     client: Daikin.AirPurifier;
     airPurifierService: any;
     airQualitySensorService: any;
+    humidifierService: any;
+    humiditySensorService: any;
     informationService: any;
     services: any;
 
@@ -56,26 +58,26 @@ class DAP {
 
         this.airPurifierService
             .getCharacteristic(Characteristic.Active)
-            .on('get', this.getActiveCharacteristic.bind(this))
-            .on('set', this.setActiveCharacteristic.bind(this));
+            .on('get', this.getAirPurifierActive.bind(this))
+            .on('set', this.setAirPurifierActive.bind(this));
 
         this.airPurifierService
             .getCharacteristic(Characteristic.CurrentAirPurifierState)
-            .on('get', this.getCurrentAirPurifierStateCharacteristic.bind(this));
+            .on('get', this.getCurrentAirPurifierState.bind(this));
 
         this.airPurifierService
             .getCharacteristic(Characteristic.TargetAirPurifierState)
-            .on('get', this.getTargetAirPurifierStateCharacteristic.bind(this))
-            .on('set', this.setTargetAirPurifierStateCharacteristic.bind(this));
+            .on('get', this.getTargetAirPurifierState.bind(this))
+            .on('set', this.setTargetAirPurifierState.bind(this));
 
         this.airPurifierService
             .getCharacteristic(Characteristic.RotationSpeed)
-            .on('get', this.getRotationSpeedCharacteristic.bind(this))
-            .on('set', this.setRotationSpeedCharacteristic.bind(this));
+            .on('get', this.getRotationSpeed.bind(this))
+            .on('set', this.setRotationSpeed.bind(this));
 
         this.airPurifierService
             .getCharacteristic(Characteristic.FilterChangeIndication)
-            .on('get', this.getFilterChangeIndicationCharacteristic.bind(this));
+            .on('get', this.getFilterChangeIndication.bind(this));
 
         this.services.push(this.airPurifierService);
 
@@ -89,6 +91,43 @@ class DAP {
 
         this.services.push(this.airQualitySensorService);
 
+        // Service "Humidifier Dehumidifier"
+        // https://github.com/KhaosT/HAP-NodeJS/blob/243c112abee13346007db358b13b5bbeda75e0af/lib/gen/HomeKitTypes.js#L3013-L3038
+        this.humidifierService = new Service.HumidifierDehumidifier(this.name);
+
+        this.humidifierService
+            .getCharacteristic(Characteristic.Active)
+            .on('get', this.getHumidifierActive.bind(this))
+            .on('set', this.setHumidifierActive.bind(this));
+
+        this.humidifierService
+            .getCharacteristic(Characteristic.CurrentHumidifierDehumidifierState)
+            .on('get', this.getCurrentHumidifierState.bind(this));
+
+        this.humidifierService
+            .getCharacteristic(Characteristic.TargetHumidifierDehumidifierState)
+            .setProps({validValues: [Characteristic.TargetHumidifierDehumidifierState.HUMIDIFIER] })
+            .setValue(Characteristic.TargetHumidifierDehumidifierState.HUMIDIFIER);
+
+        this.humidifierService
+            .addCharacteristic(Characteristic.RelativeHumidityHumidifierThreshold)
+            .on('get', this.getRelativeHumidityHumidifierThreshold.bind(this))
+            .on('set', this.setRelativeHumidityHumidifierThreshold.bind(this));
+
+        this.humidifierService
+            .getCharacteristic(Characteristic.CurrentRelativeHumidity)
+            .on('get', this.getCurrentRelativeHumidity.bind(this));
+
+        this.humidifierService
+            .getCharacteristic(Characteristic.WaterLevel)
+            .on('get', this.getWaterLevel.bind(this));
+
+        this.services.push(this.humidifierService);
+
+        // Service "Humidity Sensor"
+        // https://github.com/KhaosT/HAP-NodeJS/blob/243c112abee13346007db358b13b5bbeda75e0af/lib/gen/HomeKitTypes.js#L3040-L3056
+        this.humiditySensorService = new Service.HumiditySensor(this.name);
+
         this.informationService = new Service.AccessoryInformation();
         this.informationService
             .setCharacteristic(Characteristic.Manufacturer, 'Daikin')
@@ -97,19 +136,24 @@ class DAP {
         this.services.push(this.informationService);
     }
 
-    async getActiveCharacteristic(next: any) {
-        this.log("getActiveCharacteristic");
+    async getAirPurifierActive(next: any) {
         const unitInfo = await this.client.getUnitInfo();
         this.log("getActiveCharacteristic POW:" + unitInfo.ctrl_info.pow);
         return next(null, unitInfo.ctrl_info.pow);
     }
 
-    async setActiveCharacteristic(pow: number, next: any) {
+    async setAirPurifierActive(pow: number, next: any) {
         this.log("setActiveCharacteristic");
         await this.client.setPower(pow);
         if(pow == POW_OFF){
             this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
                 .updateValue(Characteristic.CurrentAirPurifierState.INACTIVE);
+            this.airPurifierService.getCharacteristic(Characteristic.RotationSpeed)
+                .updateValue(0);
+            this.humidifierService.getCharacteristic(Characteristic.Active)
+                .updateValue(Characteristic.Active.INACTIVE);
+            this.humidifierService.getCharacteristic(Characteristic.RelativeHumidityHumidifierThreshold)
+                .updateValue(0);
         } else {
             this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
                 .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
@@ -117,7 +161,7 @@ class DAP {
         return next();
     }
 
-    async getCurrentAirPurifierStateCharacteristic(next: any) {
+    async getCurrentAirPurifierState(next: any) {
         this.log("getCurrentAirPurifierStateCharacteristic");
         const unitInfo = await this.client.getUnitInfo();
         this.log("getCurrentAirPurifierStateCharacteristic POW:" + unitInfo.ctrl_info.pow);
@@ -130,7 +174,7 @@ class DAP {
         }
     }
 
-    async getTargetAirPurifierStateCharacteristic(next: any) {
+    async getTargetAirPurifierState(next: any) {
         this.log("getTargetAirPurifierStateCharacteristic");
         const unitInfo = await this.client.getUnitInfo();
         this.log("getTargetAirPurifierStateCharacteristic MODE: " + unitInfo.ctrl_info.mode);
@@ -141,7 +185,7 @@ class DAP {
         }
     }
 
-    async setTargetAirPurifierStateCharacteristic(target: number, next: any) {
+    async setTargetAirPurifierState(target: number, next: any) {
         this.log("setTargetAirPurifierStateCharacteristic");
         const unitInfo = await this.client.getUnitInfo();
         switch (target) {
@@ -151,10 +195,14 @@ class DAP {
                     .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
                 break;
             case Characteristic.TargetAirPurifierState.AUTO :
+                this.airPurifierService.getCharacteristic(Characteristic.RotationSpeed)
+                    .updateValue(100);
                 if (unitInfo.ctrl_info.humd == HUMD_OFF) {
                     await this.client.setAutofanMode();
                 } else {
                     await this.client.setSmartMode();
+                    this.humidifierService.getCharacteristic(Characteristic.RelativeHumidityHumidifierThreshold)
+                        .updateValue(100);
                 }
                 this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
                     .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
@@ -163,13 +211,15 @@ class DAP {
         return next();
     }
 
-    async getRotationSpeedCharacteristic(next: any) {
+    async getRotationSpeed(next: any) {
         this.log("getRotationSpeedCharacteristic");
         const unitInfo = await this.client.getUnitInfo();
         if (unitInfo.ctrl_info.pow == POW_OFF) {
-            return next(null, 0 );
+            return next(null, 0);
         } else if (unitInfo.ctrl_info.mode == MODE_ECONO) {
             return next(null, 5);
+        } else if (unitInfo.ctrl_info.mode == MODE_POLLEN) {
+            return next(null, 100);
         } else {
             switch (unitInfo.ctrl_info.airvol) {
                 case AIRVOL_AUTOFAN:
@@ -188,7 +238,7 @@ class DAP {
         }
     }
 
-    async setRotationSpeedCharacteristic(speed: number, next: any) {
+    async setRotationSpeed(speed: number, next: any) {
         this.log("setRotationSpeedCharacteristic");
         let airvol = Math.ceil(speed / 20 );
         this.log("airvol: " + airvol);
@@ -224,7 +274,7 @@ class DAP {
         return next();
     }
 
-    async getFilterChangeIndicationCharacteristic(next: any) {
+    async getFilterChangeIndication(next: any) {
         this.log("getFilterChangeIndicationCharacteristic");
         const unitInfo = await this.client.getUnitInfo();
         this.log("getFilterChangeIndicationCharacteristic filter: " + unitInfo.unit_status.filter);
@@ -251,6 +301,127 @@ class DAP {
                 return next(null, Characteristic.AirQuality.POOR);
             default:
                 return next(null, Characteristic.AirQuality.UNKNOWN);
+        }
+    }
+
+    async getHumidifierActive(next: any) {
+        const unitInfo = await this.client.getUnitInfo();
+        this.log("getHumidifierActive: pow:" + unitInfo.ctrl_info.pow + "mode:" + unitInfo.ctrl_info.mode + "humd:" + unitInfo.ctrl_info.humd);
+        if( unitInfo.ctrl_info.humd == HUMD_OFF) {
+            return next(null, Characteristic.Active.INACTIVE);
+        } else {
+            return next(null, Characteristic.Active.ACTIVE);
+        }
+    }
+
+    async setHumidifierActive(pow: number, next: any) {
+        this.log("setHumidifierActive");
+        const unitInfo = await this.client.getUnitInfo();
+        if(pow == POW_OFF){
+            if(unitInfo.ctrl_info.pow == POW_ON && (unitInfo.ctrl_info.mode == MODE_SMART || unitInfo.ctrl_info.mode == MODE_MOIST) ){
+                await this.client.setControlInfo(POW_ON, MODE_AUTOFAN, AIRVOL_AUTOFAN, HUMD_OFF);
+            } else {
+                await this.client.setControlInfo(POW_ON, unitInfo.ctrl_info.mode, unitInfo.ctrl_info.airvol, HUMD_OFF);
+            }
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.INACTIVE);
+            this.humidifierService.getCharacteristic(Characteristic.RelativeHumidityHumidifierThreshold)
+                .updateValue(0);
+        } else {
+            if (unitInfo.ctrl_info.mode == MODE_AUTOFAN) {
+                await this.client.setSmartMode();
+                this.humidifierService.getCharacteristic(Characteristic.RelativeHumidityHumidifierThreshold)
+                    .updateValue(100);
+            } else {
+                await this.client.setControlInfo(POW_ON, unitInfo.ctrl_info.mode, unitInfo.ctrl_info.airvol, HUMD_STANDARD);
+                this.humidifierService.getCharacteristic(Characteristic.RelativeHumidityHumidifierThreshold)
+                    .updateValue(50);
+            }
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
+        }
+        return next();
+    }
+
+    async getCurrentHumidifierState(next: any) {
+        const unitInfo = await this.client.getUnitInfo();
+        if (unitInfo.ctrl_info.pow == POW_OFF || unitInfo.ctrl_info.humd == HUMD_OFF) {
+            return next(null, Characteristic.CurrentHumidifierDehumidifierState.INACTIVE);
+        } else {
+            return next(null, Characteristic.CurrentHumidifierDehumidifierState.HUMIDIFYING);
+        }
+    }
+
+    async getRelativeHumidityHumidifierThreshold(next: any) {
+        this.log("getTargetRelativeHumidityHumidifierThreshold");
+        const unitInfo = await this.client.getUnitInfo();
+        if ( unitInfo.ctrl_info.mode == MODE_SMART ) {
+            return next(null, 100);
+        } else if (unitInfo.ctrl_info.mode == MODE_MOIST){
+            return next(null, 70);
+        } else if (unitInfo.ctrl_info.humd == HUMD_HIGH){
+            return next(null, 60);
+        } else if (unitInfo.ctrl_info.humd == HUMD_STANDARD) {
+            return next(null, 50);
+        } else if (unitInfo.ctrl_info.humd == HUMD_LOW) {
+            return next(null, 40);
+        } else if (unitInfo.ctrl_info.humd == HUMD_OFF) {
+            return next(null, 0);
+        }
+    }
+
+    async setRelativeHumidityHumidifierThreshold(humd: number, next: any) {
+        this.log("setTargetRelativeHumidityHumidifierThreshold: " + humd);
+        const unitInfo = await this.client.getUnitInfo();
+        if (humd == 100) {
+            await this.client.setSmartMode();
+        } else if (humd >= 70 && humd < 100) {
+            await this.client.setMoistMode();
+        } else if (humd >= 60 && humd < 70 && (unitInfo.ctrl_info.mode != MODE_SMART && unitInfo.ctrl_info.mode != MODE_MOIST) ) {
+            await this.client.setControlInfo(POW_ON, unitInfo.ctrl_info.mode, unitInfo.ctrl_info.airvol, HUMD_HIGH);
+        } else if (humd >= 60 && humd < 70 && (unitInfo.ctrl_info.mode == MODE_SMART || unitInfo.ctrl_info.mode == MODE_MOIST) ) {
+            await this.client.setControlInfo(POW_ON, MODE_AUTOFAN, unitInfo.ctrl_info.airvol, HUMD_HIGH);
+        } else if (humd >= 50 && humd < 60 && (unitInfo.ctrl_info.mode != MODE_SMART && unitInfo.ctrl_info.mode != MODE_MOIST) ) {
+            await this.client.setControlInfo(POW_ON, unitInfo.ctrl_info.mode, unitInfo.ctrl_info.airvol, HUMD_STANDARD);
+        } else if (humd >= 50 && humd < 60 && (unitInfo.ctrl_info.mode == MODE_SMART || unitInfo.ctrl_info.mode == MODE_MOIST) ) {
+            await this.client.setControlInfo(POW_ON, MODE_AUTOFAN, unitInfo.ctrl_info.airvol, HUMD_STANDARD);
+        } else if (humd > 0 && humd < 50 && (unitInfo.ctrl_info.mode != MODE_SMART && unitInfo.ctrl_info.mode != MODE_MOIST) ) {
+            await this.client.setControlInfo(POW_ON, unitInfo.ctrl_info.mode, unitInfo.ctrl_info.airvol, HUMD_LOW);
+        } else if (humd > 0 && humd < 50 && (unitInfo.ctrl_info.mode == MODE_SMART || unitInfo.ctrl_info.mode == MODE_MOIST) ) {
+            await this.client.setControlInfo(POW_ON, MODE_AUTOFAN, unitInfo.ctrl_info.airvol, HUMD_LOW);
+        } else if (humd == 0 && (unitInfo.ctrl_info.mode == MODE_SMART || unitInfo.ctrl_info.mode == MODE_MOIST) ) {
+            await this.client.setControlInfo(POW_ON, MODE_AUTOFAN, AIRVOL_AUTOFAN, HUMD_OFF);
+        } else if (humd == 0) {
+            await this.client.setControlInfo(POW_ON, unitInfo.ctrl_info.mode, unitInfo.ctrl_info.airvol, HUMD_OFF);
+        }
+
+        if (humd == 0) {
+            this.humidifierService.getCharacteristic(Characteristic.CurrentHumidifierDehumidifierState)
+                .updateValue(Characteristic.CurrentHumidifierDehumidifierState.INACTIVE);
+            this.humidifierService.getCharacteristic(Characteristic.Active)
+                .updateValue(Characteristic.Active.INACTIVE);
+        } else {
+            this.humidifierService.getCharacteristic(Characteristic.CurrentHumidifierDehumidifierState)
+                .updateValue(Characteristic.CurrentHumidifierDehumidifierState.HUMIDIFYING);
+            this.humidifierService.getCharacteristic(Characteristic.Active)
+                .updateValue(Characteristic.Active.ACTIVE);
+        }
+        return next();
+    }
+
+    async getCurrentRelativeHumidity(next: any) {
+        const unitInfo = await this.client.getUnitInfo();
+        this.log("getCurrentRelativeHumidity: " + unitInfo.sensor_info.hhum);
+        return next(null, unitInfo.sensor_info.hhum);
+    }
+
+    async getWaterLevel(next: any) {
+        const unitInfo = await this.client.getUnitInfo();
+        this.log("getWaterLevel: " + unitInfo.unit_status.water_supply);
+        if (unitInfo.unit_status.water_supply == 0) {
+            return next(null, 100);
+        } else {
+            return next(null, 0);
         }
     }
 
