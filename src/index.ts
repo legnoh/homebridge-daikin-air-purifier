@@ -134,7 +134,7 @@ class DAP {
         this.log("getTargetAirPurifierStateCharacteristic");
         const unitInfo = await this.client.getUnitInfo();
         this.log("getTargetAirPurifierStateCharacteristic MODE: " + unitInfo.ctrl_info.mode);
-        if(unitInfo.ctrl_info.mode == MODE_SMART) {
+        if(unitInfo.ctrl_info.mode == MODE_SMART || unitInfo.ctrl_info.mode == MODE_AUTOFAN) {
             return next(null, Characteristic.TargetAirPurifierState.AUTO);
         } else {
             return next(null, Characteristic.TargetAirPurifierState.MANUAL);
@@ -143,6 +143,7 @@ class DAP {
 
     async setTargetAirPurifierStateCharacteristic(target: number, next: any) {
         this.log("setTargetAirPurifierStateCharacteristic");
+        const unitInfo = await this.client.getUnitInfo();
         switch (target) {
             case Characteristic.TargetAirPurifierState.MANUAL :
                 await this.client.setPollenMode();
@@ -150,7 +151,11 @@ class DAP {
                     .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
                 break;
             case Characteristic.TargetAirPurifierState.AUTO :
-                await this.client.setSmartMode();
+                if (unitInfo.ctrl_info.humd == HUMD_OFF) {
+                    await this.client.setAutofanMode();
+                } else {
+                    await this.client.setSmartMode();
+                }
                 this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
                     .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
                 break;
@@ -161,8 +166,26 @@ class DAP {
     async getRotationSpeedCharacteristic(next: any) {
         this.log("getRotationSpeedCharacteristic");
         const unitInfo = await this.client.getUnitInfo();
-        this.log("getRotationSpeedCharacteristic airvol: " + unitInfo.ctrl_info.airvol);
-        return next(null, unitInfo.ctrl_info.airvol * 20 );
+        if (unitInfo.ctrl_info.pow == POW_OFF) {
+            return next(null, 0 );
+        } else if (unitInfo.ctrl_info.mode == MODE_ECONO) {
+            return next(null, 5);
+        } else {
+            switch (unitInfo.ctrl_info.airvol) {
+                case AIRVOL_AUTOFAN:
+                    return next(null, 100);
+                case AIRVOL_TURBO:
+                    return next(null, 75);
+                case AIRVOL_STANDARD:
+                    return next(null, 50);
+                case AIRVOL_LOW:
+                    return next(null, 25);
+                case AIRVOL_QUIET:
+                    return next(null, 10);
+                default:
+                    return next(null, 0);
+            }
+        }
     }
 
     async setRotationSpeedCharacteristic(speed: number, next: any) {
@@ -173,14 +196,18 @@ class DAP {
             await this.client.setPower(POW_OFF);
             this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
                 .updateValue(Characteristic.CurrentAirPurifierState.INACTIVE);
-        } else if ( speed > 0 && speed < 25 ) {
+        } else if ( speed > 0 && speed < 10 ) {
+            await this.client.setEconoMode();
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
+        } else if ( speed >= 10 && speed < 25 ) {
             await this.client.setAirvol(AIRVOL_QUIET);
             this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
                 .updateValue(Characteristic.CurrentAirPurifierState.IDLE);
         } else if ( speed >= 25 && speed < 50 ) {
             await this.client.setAirvol(AIRVOL_LOW);
             this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
-                .updateValue(Characteristic.CurrentAirPurifierState.IDLE);
+                .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
         } else if ( speed >= 50 && speed < 75 ) {
             await this.client.setAirvol(AIRVOL_STANDARD);
             this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
