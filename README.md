@@ -35,3 +35,7 @@ homebridge-daikin-air-purifier (beta)
 | `name`                           | name of the accessory - for DisplayName and logs.        |     ✓    |      -    |  String  |
 | `username`                       | your "out-of-home" Login id.                             |     ✓    |      -    |  String  |
 | `password`                       | your "out-of-home" password.                             |     ✓    |      -    |  String  |
+
+## Control
+
+TBD
