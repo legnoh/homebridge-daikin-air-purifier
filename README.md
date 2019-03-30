@@ -1,6 +1,8 @@
 homebridge-daikin-air-purifier (beta)
 ========================
 
+![image](https://user-images.githubusercontent.com/706834/55276679-c41d3300-5339-11e9-9895-27b6ae3a7353.jpg)
+
 - Homebridge Plugin for Daikin Smart Purifier(MCK70U(no checked)/MCK70V).
 - Complies with ```Service.AirPurifier```
 - Compatible with ***iOS 11 and above*** -  iOS 10 Home app does not support AirPurifier service. 
