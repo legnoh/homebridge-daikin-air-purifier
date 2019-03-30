@@ -4,7 +4,7 @@ let Service, Characteristic;
 export default function (homebridge: any) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
-    homebridge.registerAccessory("homebridge-daikin-air-purifier", "DaikinAirPurifier", AirPurifier);
+    homebridge.registerAccessory("homebridge-daikin-air-purifier", "DaikinAirPurifier", DAP);
 }
 
 const RES_STYLE_NONE = 0
@@ -29,7 +29,7 @@ const HUMD_STANDARD = 2;
 const HUMD_HIGH = 3;
 const HUMD_AUTO = 4;
 
-class AirPurifier {
+class DAP {
     log: Function;
     config: {};
     name: string;
@@ -37,6 +37,7 @@ class AirPurifier {
     password: string;
     client: Daikin.AirPurifier;
     airPurifierService: any;
+    airQualitySensorService: any;
     informationService: any;
     services: any;
 
@@ -78,6 +79,16 @@ class AirPurifier {
 
         this.services.push(this.airPurifierService);
 
+        // Service "Air Quality Sensor"
+        // https://github.com/KhaosT/HAP-NodeJS/blob/243c112abee13346007db358b13b5bbeda75e0af/lib/gen/HomeKitTypes.js#L2696-L2720
+        this.airQualitySensorService = new Service.AirQualitySensor(this.name);
+
+        this.airQualitySensorService
+            .getCharacteristic(Characteristic.AirQuality)
+            .on('get', this.getAirQuality.bind(this));
+
+        this.services.push(this.airQualitySensorService);
+
         this.informationService = new Service.AccessoryInformation();
         this.informationService
             .setCharacteristic(Characteristic.Manufacturer, 'Daikin')
@@ -96,6 +107,13 @@ class AirPurifier {
     async setActiveCharacteristic(pow: number, next: any) {
         this.log("setActiveCharacteristic");
         await this.client.setPower(pow);
+        if(pow == POW_OFF){
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.INACTIVE);
+        } else {
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
+        }
         return next();
     }
 
@@ -128,9 +146,13 @@ class AirPurifier {
         switch (target) {
             case Characteristic.TargetAirPurifierState.MANUAL :
                 await this.client.setPollenMode();
+                this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                    .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
                 break;
             case Characteristic.TargetAirPurifierState.AUTO :
                 await this.client.setSmartMode();
+                this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                    .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
                 break;
         }
         return next();
@@ -145,7 +167,33 @@ class AirPurifier {
 
     async setRotationSpeedCharacteristic(speed: number, next: any) {
         this.log("setRotationSpeedCharacteristic");
-        await this.client.setAirvol(speed / 20);
+        let airvol = Math.ceil(speed / 20 );
+        this.log("airvol: " + airvol);
+        if (speed == 0) {
+            await this.client.setPower(POW_OFF);
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.INACTIVE);
+        } else if ( speed > 0 && speed < 25 ) {
+            await this.client.setAirvol(AIRVOL_QUIET);
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.IDLE);
+        } else if ( speed >= 25 && speed < 50 ) {
+            await this.client.setAirvol(AIRVOL_LOW);
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.IDLE);
+        } else if ( speed >= 50 && speed < 75 ) {
+            await this.client.setAirvol(AIRVOL_STANDARD);
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
+        } else if (speed >= 75 && speed < 100 ) {
+            await this.client.setAirvol(AIRVOL_TURBO);
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
+        } else if (speed == 100) {
+            await this.client.setAirvol(AIRVOL_AUTOFAN);
+            this.airPurifierService.getCharacteristic(Characteristic.CurrentAirPurifierState)
+                .updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
+        }
         return next();
     }
 
@@ -154,6 +202,29 @@ class AirPurifier {
         const unitInfo = await this.client.getUnitInfo();
         this.log("getFilterChangeIndicationCharacteristic filter: " + unitInfo.unit_status.filter);
         return next(null, unitInfo.unit_status.filter);
+    }
+
+    async getAirQuality(next: any) {
+        this.log("getAirQuality");
+        const unitInfo = await this.client.getUnitInfo();
+        this.log("getAirQuality dust:" + unitInfo.sensor_info.dust + " pm25:" + unitInfo.sensor_info.pm25 + " odor:" + unitInfo.sensor_info.odor);
+        let aq = Math.max(unitInfo.sensor_info.dust, unitInfo.sensor_info.pm25, unitInfo.sensor_info.odor);
+
+        switch (aq) {
+            case 0:
+                return next(null, Characteristic.AirQuality.EXCELLENT);
+            case 1:
+                return next(null, Characteristic.AirQuality.GOOD);
+            case 2:
+                return next(null, Characteristic.AirQuality.FAIR);
+            case 3:
+                return next(null, Characteristic.AirQuality.INFERIOR);
+            case 4:
+            case 5:
+                return next(null, Characteristic.AirQuality.POOR);
+            default:
+                return next(null, Characteristic.AirQuality.UNKNOWN);
+        }
     }
 
     getServices() {
