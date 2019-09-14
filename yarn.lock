@@ -91,8 +91,9 @@ curve25519-n@^1.2.0:
     nan "^2.10.0"
 
 "daikin-air-purifier@github:legnoh/daikin-air-purifier":
-  version "0.0.1"
-  resolved "https://codeload.github.com/legnoh/daikin-air-purifier/tar.gz/e77dec3506968c3b70baf7822baea5aa6a39b90b"
+  version "0.0.2"
+  uid "77d7bba4fded9d2b68cba6f41fc819d9b9174015"
+  resolved "https://codeload.github.com/legnoh/daikin-air-purifier/tar.gz/77d7bba4fded9d2b68cba6f41fc819d9b9174015"
   dependencies:
     axios "^0.18.0"
 
