@@ -22,7 +22,7 @@
     "homebridge": ">=0.2.0"
   },
   "devDependencies": {
-    "@types/node": "^11.11.6",
+    "@types/node": "^12.7.5",
     "homebridge": "nfarina/homebridge",
     "typescript": "^3.6.3"
   },
