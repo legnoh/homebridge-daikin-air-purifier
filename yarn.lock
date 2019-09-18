@@ -22,7 +22,7 @@ array-flatten@^2.1.0:
   resolved "https://registry.yarnpkg.com/array-flatten/-/array-flatten-2.1.2.tgz#24ef80a28c1a893617e2149b0c6d0d788293b099"
   integrity sha512-hNfzcOV8W4NdualtqBFPyVO+54DSJuZGY9qT4pRroB6S9e3iiido2ISIC5h9R2sPJ8H3FHCIiEnsv1lPXO3KtQ==
 
-axios@^0.18.0:
+axios@^0.18.1:
   version "0.18.1"
   resolved "https://registry.yarnpkg.com/axios/-/axios-0.18.1.tgz#ff3f0de2e7b5d180e757ad98000f1081b87bcea3"
   integrity sha512-0BfJq4NSfQXd+SkFdrvFbG7addhYSBA2mQwISr46pD6E5iqkWg02RAs8vyTT/j0RTnoYmeXauBuSv1qKwR179g==
@@ -72,10 +72,10 @@ commander@2.8.1:
 
 "daikin-air-purifier@github:legnoh/daikin-air-purifier":
   version "0.0.2"
-  uid "15ac6e860e39d7af77a7720e51d4e165b22055b4"
-  resolved "https://codeload.github.com/legnoh/daikin-air-purifier/tar.gz/15ac6e860e39d7af77a7720e51d4e165b22055b4"
+  uid "2b68a9b0e477cdb8365d44a26c328b5683305233"
+  resolved "https://codeload.github.com/legnoh/daikin-air-purifier/tar.gz/2b68a9b0e477cdb8365d44a26c328b5683305233"
   dependencies:
-    axios "^0.18.0"
+    axios "^0.18.1"
 
 debug@=3.1.0:
   version "3.1.0"
