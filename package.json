@@ -24,7 +24,7 @@
   "devDependencies": {
     "@types/node": "^12.7.12",
     "homebridge": "nfarina/homebridge",
-    "typescript": "^3.6.3"
+    "typescript": "^3.6.4"
   },
   "dependencies": {
     "daikin-air-purifier": "github:legnoh/daikin-air-purifier"
