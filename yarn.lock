@@ -166,8 +166,8 @@ has-ansi@^2.0.0:
 
 homebridge@nfarina/homebridge:
   version "0.4.50"
-  uid "84b4733ac75aba9e7c19d36be282cd8162077860"
-  resolved "https://codeload.github.com/nfarina/homebridge/tar.gz/84b4733ac75aba9e7c19d36be282cd8162077860"
+  uid "2a44b10cabee7adba66866efbc4872af80e136f8"
+  resolved "https://codeload.github.com/nfarina/homebridge/tar.gz/2a44b10cabee7adba66866efbc4872af80e136f8"
   dependencies:
     chalk "^1.1.1"
     commander "2.8.1"
