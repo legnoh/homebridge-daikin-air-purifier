@@ -72,8 +72,8 @@ commander@2.8.1:
 
 "daikin-air-purifier@github:legnoh/daikin-air-purifier":
   version "0.0.2"
-  uid "0cf7803a782d94a774ae90d2bc56b78e8f9a4dc6"
-  resolved "https://codeload.github.com/legnoh/daikin-air-purifier/tar.gz/0cf7803a782d94a774ae90d2bc56b78e8f9a4dc6"
+  uid "059bcd07377b9efac96eb3e33cee917a2dee8c14"
+  resolved "https://codeload.github.com/legnoh/daikin-air-purifier/tar.gz/059bcd07377b9efac96eb3e33cee917a2dee8c14"
   dependencies:
     axios "^0.19.0"
 
